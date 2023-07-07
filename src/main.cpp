@@ -82,8 +82,6 @@ void loop() {
       {
         Serial.println("Unknown command: '" + input + "'");
       }
-
-      Serial.println("Mode: '" + String(running_mode) + "'");    
     }
   }
 
@@ -145,7 +143,7 @@ void BreatheMode(uint32_t color, uint8_t min_brightness, uint8_t max_brightness,
 #define STRINGS_ARE_EQUAL 0
 Command ToEnum(String command)
 {
-  Command result;
+  Command result = unknown;
 
   if(command.compareTo("mode") == STRINGS_ARE_EQUAL)
   {
