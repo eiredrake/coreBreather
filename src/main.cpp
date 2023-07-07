@@ -17,10 +17,21 @@ uint8_t min_brightness = 0;
 uint8_t max_brightness = 50;
 uint32_t breath_speed = 5;
 uint32_t hold_breath_time = 50;
-uint8_t mode = 0;
+uint8_t running_mode = 0;
 
 #define BREATHE_MODE 1
 
+enum Command
+{
+  unknown = -1,
+  mode = 0,
+};
+
+Command ToEnum(String command);
+
+
+
+void ProcessCommand(Command command, String argument);
 void NullMode(uint8_t sleep_ms);
 void BreatheMode(uint32_t color, uint8_t min_brightness, uint8_t max_brightness, uint32_t breathe_speed, uint32_t hold_breath_ms);
 
@@ -28,11 +39,11 @@ void setup() {
   // debug_init();
 
   Serial.begin(9600);
-  Serial.println("min_brightness: " + String(min_brightness));
-  Serial.println("max_brightness: " + String(max_brightness));
-  Serial.println("breath_speed: " + String(breath_speed) + " ms.");
-  Serial.println("hold_breath_time: " + String(hold_breath_time) + " ms.");
-  Serial.println("color: " + String(color));
+  // Serial.println("min_brightness: " + String(min_brightness));
+  // Serial.println("max_brightness: " + String(max_brightness));
+  // Serial.println("breath_speed: " + String(breath_speed) + " ms.");
+  // Serial.println("hold_breath_time: " + String(hold_breath_time) + " ms.");
+  // Serial.println("color: " + String(color));
 
   strip.begin(); // Initialize pins for output
   strip.show();  // Turn all LEDs off ASAP
@@ -44,7 +55,7 @@ void setup() {
 
   Serial.println("Core processor is listening....");
 
-  mode = 1;
+  running_mode = 1;
 }
 
 void loop() {
@@ -58,31 +69,25 @@ void loop() {
 
       MatchState regex;
       regex.Target(buffer, length);
-      char result = regex.Match("^([a-z]+): (\\d*)");
+      char result = regex.Match("^([a-z]+): (%d*)");
       if (result == REGEXP_MATCHED)
       {
-          Serial.println("Captures: " + String(regex.level));
-          for(int index = 0; index < regex.level; index++)
-          {
-              String capture = regex.GetCapture(buffer, index);
-              Serial.println("Capture: " + capture);
-          }
+          String command_string = regex.GetCapture(buffer, 0);
+          String argument_string = regex.GetCapture(buffer, 1);
 
-          String command = regex.GetCapture(buffer, 0);
-          String argument = regex.GetCapture(buffer, 1);
-
-          Serial.println("Command: '" + command + "' argument: '" + argument + "'");
+          Command command = ToEnum(command_string);
+          ProcessCommand(command, argument_string);        
       }
       else if(result == REGEXP_NOMATCH)
       {
         Serial.println("Unknown command: '" + input + "'");
       }
 
-      Serial.println("Mode: '" + String(mode) + "'");    
+      Serial.println("Mode: '" + String(running_mode) + "'");    
     }
   }
 
-  switch(mode)
+  switch(running_mode)
   {
     case BREATHE_MODE:
       BreatheMode(color, min_brightness, max_brightness, breath_speed, hold_breath_time);
@@ -91,6 +96,20 @@ void loop() {
       NullMode(50);
       break;
   }  
+}
+
+void ProcessCommand(Command command, String argument)
+{
+  switch(command)
+  {
+    case mode:
+      running_mode = argument.toInt();
+      Serial.println("mode set to: '" + argument + "'");
+      break;
+    default:
+      Serial.println("Unknown command");
+      break;
+  }
 }
 
 void NullMode(uint8_t sleep_ms)
@@ -121,4 +140,17 @@ void BreatheMode(uint32_t color, uint8_t min_brightness, uint8_t max_brightness,
     }
 
     delay(hold_breath_time);
+}
+
+#define STRINGS_ARE_EQUAL 0
+Command ToEnum(String command)
+{
+  Command result;
+
+  if(command.compareTo("mode") == STRINGS_ARE_EQUAL)
+  {
+    result = mode;
+  }
+
+  return result;
 }
