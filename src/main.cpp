@@ -4,6 +4,8 @@
 #include "Adafruit_DotStar.h"
 // #include "SPI.h"
 #include "Regexp.h"
+#include "ModeType.h"
+#include "CommandType.h"
 
 // HOW TO SET THIS SHIT UP: https://www.youtube.com/watch?v=7wx27FcluMg&ab_channel=J%27se-shack
 
@@ -17,21 +19,12 @@ uint8_t min_brightness = 0;
 uint8_t max_brightness = 50;
 uint32_t breath_speed = 5;
 uint32_t hold_breath_time = 50;
-uint8_t running_mode = 0;
 
-#define BREATHE_MODE 1
+#define UNKNOWN -1
 
-enum Command
-{
-  unknown = -1,
-  mode = 0,
-};
+ModeType::Enum running_mode = ModeType::breathe;
 
-Command ToEnum(String command);
-
-
-
-void ProcessCommand(Command command, String argument);
+void ProcessCommand(CommandType::Enum commandType, String argument);
 void NullMode(uint8_t sleep_ms);
 void BreatheMode(uint32_t color, uint8_t min_brightness, uint8_t max_brightness, uint32_t breathe_speed, uint32_t hold_breath_ms);
 
@@ -55,7 +48,7 @@ void setup() {
 
   Serial.println("Core processor is listening....");
 
-  running_mode = 1;
+  running_mode = ModeType::breathe;
 }
 
 void loop() {
@@ -75,8 +68,8 @@ void loop() {
           String command_string = regex.GetCapture(buffer, 0);
           String argument_string = regex.GetCapture(buffer, 1);
 
-          Command command = ToEnum(command_string);
-          ProcessCommand(command, argument_string);        
+          CommandType::Enum commandType = CommandType::ToEnum(command_string);
+          ProcessCommand(commandType, argument_string);        
       }
       else if(result == REGEXP_NOMATCH)
       {
@@ -87,7 +80,7 @@ void loop() {
 
   switch(running_mode)
   {
-    case BREATHE_MODE:
+    case ModeType::breathe:
       BreatheMode(color, min_brightness, max_brightness, breath_speed, hold_breath_time);
       break;
     default:
@@ -96,12 +89,12 @@ void loop() {
   }  
 }
 
-void ProcessCommand(Command command, String argument)
+void ProcessCommand(CommandType::Enum commandType, String argument)
 {
-  switch(command)
+  switch(commandType)
   {
-    case mode:
-      running_mode = argument.toInt();
+    case CommandType::mode:
+      running_mode = ModeType::Enum(argument.toInt());
       Serial.println("mode set to: '" + argument + "'");
       break;
     default:
@@ -140,15 +133,4 @@ void BreatheMode(uint32_t color, uint8_t min_brightness, uint8_t max_brightness,
     delay(hold_breath_time);
 }
 
-#define STRINGS_ARE_EQUAL 0
-Command ToEnum(String command)
-{
-  Command result = unknown;
 
-  if(command.compareTo("mode") == STRINGS_ARE_EQUAL)
-  {
-    result = mode;
-  }
-
-  return result;
-}
